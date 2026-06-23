@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="시간기록" />
+  <meta name="theme-color" content="#111827" />
+  <title>시간 기록 타임테이블</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: rgba(255,255,255,.09);
+      --panel2: rgba(255,255,255,.13);
+      --line: rgba(255,255,255,.14);
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --soft: #94a3b8;
+      --accent: #8b5cf6;
+      --accent2: #06b6d4;
+      --danger: #fb7185;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --shadow: 0 20px 60px rgba(0,0,0,.30);
+      --radius: 22px;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", Segoe UI, sans-serif; }
+    body {
+      background:
+        radial-gradient(circle at 10% -5%, rgba(139,92,246,.55), transparent 34%),
+        radial-gradient(circle at 92% 6%, rgba(6,182,212,.38), transparent 30%),
+        linear-gradient(180deg, #0f172a, #111827 42%, #020617);
+      padding: max(18px, env(safe-area-inset-top)) 14px max(26px, env(safe-area-inset-bottom));
+    }
+    .app { width: min(760px, 100%); margin: 0 auto; }
+    header { padding: 6px 4px 14px; }
+    .eyebrow { color: var(--muted); font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { margin: 7px 0 4px; font-size: clamp(28px, 8vw, 42px); line-height: 1.05; letter-spacing: -0.06em; }
+    .sub { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); padding: 16px; margin: 12px 0; }
+    .timer-card { background: linear-gradient(145deg, rgba(255,255,255,.16), rgba(255,255,255,.07)); }
+    .row { display: flex; gap: 10px; align-items: center; }
+    .row.wrap { flex-wrap: wrap; }
+    .grow { flex: 1; }
+    label { display: block; font-size: 12px; color: var(--muted); font-weight: 700; margin: 0 0 7px; }
+    input, select, textarea {
+      width: 100%; border: 1px solid var(--line); border-radius: 16px; background: rgba(2,6,23,.46); color: var(--text); font-size: 16px; padding: 13px 14px; outline: none;
+    }
+    input:focus, textarea:focus { border-color: rgba(139,92,246,.8); box-shadow: 0 0 0 4px rgba(139,92,246,.15); }
+    button {
+      border: 0; border-radius: 16px; color: white; font-weight: 800; font-size: 16px; padding: 14px 16px; cursor: pointer; box-shadow: 0 12px 26px rgba(0,0,0,.18);
+      touch-action: manipulation;
+    }
+    button:disabled { opacity: .48; cursor: not-allowed; }
+    .primary { background: linear-gradient(135deg, var(--accent), #ec4899); }
+    .stop { background: linear-gradient(135deg, #ef4444, #f97316); }
+    .ghost { background: rgba(255,255,255,.12); border: 1px solid var(--line); box-shadow: none; }
+    .mini { padding: 9px 11px; font-size: 13px; border-radius: 999px; }
+    .danger { background: rgba(251,113,133,.18); border: 1px solid rgba(251,113,133,.35); color: #fecdd3; box-shadow: none; }
+    .active-title { font-size: 18px; font-weight: 900; margin: 4px 0 2px; }
+    .elapsed { font-variant-numeric: tabular-nums; font-size: clamp(38px, 12vw, 64px); font-weight: 950; letter-spacing: -0.06em; margin: 8px 0; }
+    .meta { color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .quick { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 4px; scrollbar-width: none; }
+    .quick::-webkit-scrollbar { display: none; }
+    .chip { flex: 0 0 auto; padding: 9px 12px; border-radius: 999px; background: rgba(255,255,255,.11); border: 1px solid var(--line); color: var(--text); font-size: 13px; font-weight: 800; }
+    .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .stat { border-radius: 18px; background: rgba(255,255,255,.09); border: 1px solid var(--line); padding: 13px; }
+    .stat b { display: block; font-size: 24px; margin-top: 4px; letter-spacing: -.04em; }
+    .section-title { display: flex; justify-content: space-between; align-items: end; gap: 12px; margin-bottom: 10px; }
+    h2 { margin: 0; font-size: 19px; letter-spacing: -.04em; }
+    .datebar { display: grid; grid-template-columns: 44px 1fr 44px; gap: 8px; align-items: center; }
+    .datebar button { padding: 12px 0; }
+    .timeline-wrap { border: 1px solid var(--line); background: rgba(2,6,23,.25); border-radius: 18px; overflow: hidden; }
+    .timeline-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.05); }
+    .timeline { position: relative; height: 1152px; overflow: hidden; }
+    .hour-line { position: absolute; left: 0; right: 0; height: 1px; background: rgba(255,255,255,.09); }
+    .hour-label { position: absolute; left: 10px; transform: translateY(-8px); color: var(--soft); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .time-block { position: absolute; left: 58px; right: 10px; border-radius: 13px; padding: 8px 10px; overflow: hidden; border: 1px solid rgba(255,255,255,.24); box-shadow: 0 10px 24px rgba(0,0,0,.24); }
+    .time-block strong { display: block; font-size: 14px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .time-block span { display: block; font-size: 11px; color: rgba(255,255,255,.86); margin-top: 3px; font-variant-numeric: tabular-nums; }
+    .now-line { position: absolute; left: 50px; right: 0; height: 2px; background: #f43f5e; box-shadow: 0 0 0 3px rgba(244,63,94,.14); }
+    .now-line::before { content: ""; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: #f43f5e; }
+    .bars { display: grid; gap: 9px; }
+    .bar-row { display: grid; grid-template-columns: 86px 1fr 58px; gap: 9px; align-items: center; font-size: 13px; }
+    .bar-name { font-weight: 800; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .bar-track { height: 12px; border-radius: 999px; background: rgba(255,255,255,.12); overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent2), var(--accent)); }
+    .bar-time { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+    .record { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+    .record:first-child { border-top: 0; }
+    .record-title { font-weight: 900; margin-bottom: 4px; }
+    .record-time { color: var(--muted); font-size: 13px; line-height: 1.4; font-variant-numeric: tabular-nums; }
+    .empty { color: var(--muted); padding: 22px 12px; text-align: center; line-height: 1.5; }
+    .manual { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .manual.open { display: block; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .footer-note { color: var(--soft); font-size: 12px; line-height: 1.5; padding: 6px 2px 0; }
+    .toast { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px); opacity: 0; transition: .22s; background: rgba(15,23,42,.92); border: 1px solid var(--line); color: var(--text); padding: 12px 14px; border-radius: 999px; box-shadow: var(--shadow); z-index: 10; font-size: 14px; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    dialog { width: min(420px, calc(100% - 28px)); border: 1px solid var(--line); border-radius: 24px; padding: 0; color: var(--text); background: #111827; box-shadow: var(--shadow); }
+    dialog::backdrop { background: rgba(0,0,0,.55); backdrop-filter: blur(6px); }
+    .dialog-inner { padding: 18px; }
+    .dialog-inner h3 { margin: 0 0 12px; font-size: 20px; }
+    @media (max-width: 480px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+      .grid2 { grid-template-columns: 1fr; }
+      .row.actions { align-items: stretch; flex-direction: column; }
+      .row.actions button { width: 100%; }
+      .timeline { height: 1056px; }
+      .bar-row { grid-template-columns: 74px 1fr 50px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div class="eyebrow">Private time tracker</div>
+      <h1>내 하루를 타임테이블로 기록하기</h1>
+      <p class="sub">시작 버튼을 누르고 제목을 입력한 뒤 종료하면, 선택한 날짜의 시간표에 자동으로 쌓입니다. 데이터는 이 기기 브라우저 안에만 저장됩니다.</p>
+    </header>
+
+    <section class="card timer-card">
+      <label for="titleInput">지금 할 일 제목</label>
+      <div class="row actions">
+        <input id="titleInput" class="grow" placeholder="예: 현장, 촬영, 편집, 이동" autocomplete="off" />
+        <button id="startBtn" class="primary">시작</button>
+        <button id="stopBtn" class="stop" disabled>종료</button>
+      </div>
+      <div class="quick" id="quickChips"></div>
+      <div id="activeBox" style="display:none; margin-top:12px;">
+        <div class="meta">현재 기록 중</div>
+        <div class="active-title" id="activeTitle">-</div>
+        <div class="elapsed" id="elapsed">00:00:00</div>
+        <div class="meta" id="activeMeta">-</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="datebar">
+        <button class="ghost" id="prevDay">‹</button>
+        <input type="date" id="datePick" />
+        <button class="ghost" id="nextDay">›</button>
+      </div>
+      <div class="stats" style="margin-top:12px;">
+        <div class="stat"><span class="meta">총 기록 시간</span><b id="totalTime">0분</b></div>
+        <div class="stat"><span class="meta">기록 개수</span><b id="countTime">0개</b></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <h2>타임테이블</h2>
+        <button class="ghost mini" id="scrollNow">현재 시간으로 이동</button>
+      </div>
+      <div class="timeline-wrap">
+        <div class="timeline-head"><span id="timelineDate">오늘</span><span class="meta">00:00–24:00</span></div>
+        <div class="timeline" id="timeline"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <h2>제목별 사용 시간</h2>
+        <span class="meta">선택 날짜 기준</span>
+      </div>
+      <div class="bars" id="bars"></div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <h2>기록 목록</h2>
+        <button class="ghost mini" id="toggleManual">수동 추가</button>
+      </div>
+      <form class="manual" id="manualForm">
+        <label>제목</label>
+        <input id="manualTitle" placeholder="예: 현장" />
+        <div class="grid2" style="margin-top:10px;">
+          <div><label>시작</label><input type="datetime-local" id="manualStart" /></div>
+          <div><label>종료</label><input type="datetime-local" id="manualEnd" /></div>
+        </div>
+        <button class="primary" style="width:100%; margin-top:10px;" type="submit">기록 추가</button>
+      </form>
+      <div id="records"></div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <h2>백업</h2>
+        <span class="meta">선택 사항</span>
+      </div>
+      <div class="row wrap">
+        <button class="ghost" id="exportBtn">JSON 백업 저장</button>
+        <button class="ghost" id="importBtn">백업 불러오기</button>
+        <button class="danger" id="resetBtn">전체 삭제</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json" style="display:none;" />
+      <p class="footer-note">홈 화면에 추가해서 앱처럼 쓰면 편합니다. 단, Safari 웹사이트 데이터 삭제나 브라우저 초기화를 하면 기록도 지워질 수 있으니 가끔 백업을 저장하세요.</p>
+    </section>
+  </main>
+
+  <dialog id="editDialog">
+    <form method="dialog" class="dialog-inner" id="editForm">
+      <h3>기록 수정</h3>
+      <input type="hidden" id="editId" />
+      <label>제목</label>
+      <input id="editTitle" />
+      <div class="grid2" style="margin-top:10px;">
+        <div><label>시작</label><input type="datetime-local" id="editStart" /></div>
+        <div><label>종료</label><input type="datetime-local" id="editEnd" /></div>
+      </div>
+      <div class="row" style="justify-content:flex-end; margin-top:14px;">
+        <button class="ghost" value="cancel" type="button" id="cancelEdit">취소</button>
+        <button class="primary" value="save" type="submit">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast">저장됨</div>
+
+<script>
+(() => {
+  const STORE_KEY = 'private_time_tracker_records_v1';
+  const ACTIVE_KEY = 'private_time_tracker_active_v1';
+  const quickTitles = ['현장', '촬영', '편집', '이동', '휴식', '운동', '회의', '정리'];
+  const colors = ['#8b5cf6','#06b6d4','#ec4899','#f97316','#34d399','#fbbf24','#60a5fa','#a78bfa','#fb7185','#22c55e'];
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    titleInput: $('titleInput'), startBtn: $('startBtn'), stopBtn: $('stopBtn'), activeBox: $('activeBox'),
+    activeTitle: $('activeTitle'), elapsed: $('elapsed'), activeMeta: $('activeMeta'), datePick: $('datePick'),
+    prevDay: $('prevDay'), nextDay: $('nextDay'), totalTime: $('totalTime'), countTime: $('countTime'),
+    timeline: $('timeline'), timelineDate: $('timelineDate'), bars: $('bars'), records: $('records'),
+    quickChips: $('quickChips'), toggleManual: $('toggleManual'), manualForm: $('manualForm'),
+    manualTitle: $('manualTitle'), manualStart: $('manualStart'), manualEnd: $('manualEnd'), scrollNow: $('scrollNow'),
+    exportBtn: $('exportBtn'), importBtn: $('importBtn'), importFile: $('importFile'), resetBtn: $('resetBtn'),
+    editDialog: $('editDialog'), editForm: $('editForm'), editId: $('editId'), editTitle: $('editTitle'),
+    editStart: $('editStart'), editEnd: $('editEnd'), cancelEdit: $('cancelEdit'), toast: $('toast')
+  };
+
+  let records = loadRecords();
+  let active = loadActive();
+  let tickHandle = null;
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function ymd(d = new Date()) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+  function hm(d) { return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+  function toLocalInputValue(date) {
+    const d = new Date(date);
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  function parseLocalInput(v) { return v ? new Date(v).toISOString() : null; }
+  function msToClock(ms) {
+    const sec = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    return `${pad(h)}:${pad(m)}:${pad(s)}`;
+  }
+  function msToPretty(ms) {
+    const min = Math.round(Math.max(0, ms) / 60000);
+    const h = Math.floor(min / 60), m = min % 60;
+    if (h && m) return `${h}시간 ${m}분`;
+    if (h) return `${h}시간`;
+    return `${m}분`;
+  }
+  function dateLabel(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일`;
+  }
+  function safeJSON(raw, fallback) { try { return JSON.parse(raw) ?? fallback; } catch { return fallback; } }
+  function loadRecords() { return safeJSON(localStorage.getItem(STORE_KEY), []); }
+  function loadActive() { return safeJSON(localStorage.getItem(ACTIVE_KEY), null); }
+  function saveRecords() { localStorage.setItem(STORE_KEY, JSON.stringify(records)); }
+  function saveActive() {
+    if (active) localStorage.setItem(ACTIVE_KEY, JSON.stringify(active));
+    else localStorage.removeItem(ACTIVE_KEY);
+  }
+  function toast(text) {
+    els.toast.textContent = text;
+    els.toast.classList.add('show');
+    setTimeout(() => els.toast.classList.remove('show'), 1700);
+  }
+  function id() { return `${Date.now()}_${Math.random().toString(16).slice(2)}`; }
+  function titleColor(title) {
+    let hash = 0;
+    for (let i = 0; i < title.length; i++) hash = (hash * 31 + title.charCodeAt(i)) >>> 0;
+    return colors[hash % colors.length];
+  }
+
+  function initQuickChips() {
+    els.quickChips.innerHTML = '';
+    quickTitles.forEach(t => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'chip';
+      chip.textContent = t;
+      chip.addEventListener('click', () => { els.titleInput.value = t; els.titleInput.focus(); });
+      els.quickChips.appendChild(chip);
+    });
+  }
+
+  function startTimer() {
+    const title = els.titleInput.value.trim() || prompt('무슨 일을 시작할까요? 예: 현장')?.trim();
+    if (!title) return;
+    if (active && !confirm('이미 기록 중인 항목이 있어요. 현재 기록을 종료하고 새로 시작할까요?')) return;
+    if (active) stopTimer(false);
+    active = { id: id(), title, start: new Date().toISOString() };
+    saveActive();
+    els.titleInput.value = '';
+    toast('기록 시작');
+    render();
+  }
+
+  function stopTimer(showToast = true) {
+    if (!active) return;
+    const end = new Date();
+    const start = new Date(active.start);
+    if (end - start < 1000) {
+      alert('기록 시간이 너무 짧아요.');
+      return;
+    }
+    records.push({ id: active.id, title: active.title, start: active.start, end: end.toISOString(), createdAt: new Date().toISOString() });
+    active = null;
+    saveActive();
+    saveRecords();
+    if (showToast) toast('기록 저장');
+    els.datePick.value = ymd(end);
+    render();
+  }
+
+  function getDayRecords(day) {
+    const startDay = new Date(day + 'T00:00:00');
+    const endDay = new Date(day + 'T24:00:00');
+    const list = records.filter(r => new Date(r.end) > startDay && new Date(r.start) < endDay);
+    if (active && new Date(active.start) < endDay && new Date() > startDay) {
+      list.push({ ...active, end: new Date().toISOString(), isActive: true });
+    }
+    return list.sort((a,b) => new Date(a.start) - new Date(b.start));
+  }
+
+  function durationWithinDay(record, day) {
+    const dayStart = new Date(day + 'T00:00:00');
+    const dayEnd = new Date(day + 'T24:00:00');
+    const s = Math.max(new Date(record.start).getTime(), dayStart.getTime());
+    const e = Math.min(new Date(record.end).getTime(), dayEnd.getTime());
+    return Math.max(0, e - s);
+  }
+
+  function renderActive() {
+    const has = !!active;
+    els.stopBtn.disabled = !has;
+    els.startBtn.textContent = has ? '새로 시작' : '시작';
+    els.activeBox.style.display = has ? 'block' : 'none';
+    if (!has) return;
+    const start = new Date(active.start);
+    els.activeTitle.textContent = active.title;
+    els.elapsed.textContent = msToClock(Date.now() - start.getTime());
+    els.activeMeta.textContent = `${ymd(start)} ${hm(start)} 시작`;
+  }
+
+  function renderStats(dayRecords, day) {
+    const total = dayRecords.reduce((sum, r) => sum + durationWithinDay(r, day), 0);
+    els.totalTime.textContent = msToPretty(total);
+    els.countTime.textContent = `${dayRecords.length}개`;
+  }
+
+  function renderTimeline(dayRecords, day) {
+    els.timelineDate.textContent = dateLabel(day);
+    els.timeline.innerHTML = '';
+    const height = els.timeline.clientHeight || 1152;
+    const pxPerMin = height / 1440;
+
+    for (let h = 0; h <= 24; h++) {
+      const y = h * 60 * pxPerMin;
+      const line = document.createElement('div');
+      line.className = 'hour-line';
+      line.style.top = `${y}px`;
+      els.timeline.appendChild(line);
+      if (h < 24) {
+        const label = document.createElement('div');
+        label.className = 'hour-label';
+        label.style.top = `${y}px`;
+        label.textContent = `${pad(h)}:00`;
+        els.timeline.appendChild(label);
+      }
+    }
+
+    if (day === ymd(new Date())) {
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds()/60;
+      const line = document.createElement('div');
+      line.className = 'now-line';
+      line.style.top = `${nowMin * pxPerMin}px`;
+      els.timeline.appendChild(line);
+    }
+
+    if (!dayRecords.length) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.style.marginTop = '90px';
+      empty.textContent = '이 날짜에는 아직 기록이 없어요.';
+      els.timeline.appendChild(empty);
+      return;
+    }
+
+    const dayStart = new Date(day + 'T00:00:00');
+    const dayEnd = new Date(day + 'T24:00:00');
+    dayRecords.forEach(r => {
+      const s = Math.max(new Date(r.start).getTime(), dayStart.getTime());
+      const e = Math.min(new Date(r.end).getTime(), dayEnd.getTime());
+      const startDate = new Date(s), endDate = new Date(e);
+      const startMin = startDate.getHours()*60 + startDate.getMinutes() + startDate.getSeconds()/60;
+      const durMin = Math.max(2, (e - s) / 60000);
+      const block = document.createElement('div');
+      block.className = 'time-block';
+      block.style.top = `${startMin * pxPerMin}px`;
+      block.style.height = `${Math.max(28, durMin * pxPerMin)}px`;
+      const color = titleColor(r.title);
+      block.style.background = `linear-gradient(135deg, ${color}, rgba(255,255,255,.13))`;
+      block.innerHTML = `<strong>${escapeHTML(r.title)}${r.isActive ? ' · 진행 중' : ''}</strong><span>${hm(startDate)}–${hm(endDate)} · ${msToPretty(e-s)}</span>`;
+      els.timeline.appendChild(block);
+    });
+  }
+
+  function renderBars(dayRecords, day) {
+    const totals = new Map();
+    dayRecords.forEach(r => totals.set(r.title, (totals.get(r.title) || 0) + durationWithinDay(r, day)));
+    const rows = [...totals.entries()].sort((a,b) => b[1] - a[1]);
+    els.bars.innerHTML = '';
+    if (!rows.length) {
+      els.bars.innerHTML = '<div class="empty">제목별 통계가 아직 없어요.</div>';
+      return;
+    }
+    const max = Math.max(...rows.map(x => x[1]));
+    rows.forEach(([name, ms]) => {
+      const row = document.createElement('div');
+      row.className = 'bar-row';
+      row.innerHTML = `<div class="bar-name">${escapeHTML(name)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(5, ms/max*100)}%"></div></div><div class="bar-time">${msToPretty(ms)}</div>`;
+      els.bars.appendChild(row);
+    });
+  }
+
+  function renderRecords(dayRecords) {
+    const finished = dayRecords.filter(r => !r.isActive).sort((a,b) => new Date(b.start) - new Date(a.start));
+    els.records.innerHTML = '';
+    if (!finished.length) {
+      els.records.innerHTML = '<div class="empty">저장된 기록이 없어요. 시작 버튼으로 첫 기록을 남겨보세요.</div>';
+      return;
+    }
+    finished.forEach(r => {
+      const item = document.createElement('div');
+      item.className = 'record';
+      const s = new Date(r.start), e = new Date(r.end);
+      item.innerHTML = `
+        <div>
+          <div class="record-title">${escapeHTML(r.title)}</div>
+          <div class="record-time">${ymd(s)} ${hm(s)} → ${ymd(e)} ${hm(e)} · ${msToPretty(e-s)}</div>
+        </div>
+        <div class="row">
+          <button class="ghost mini" data-edit="${r.id}">수정</button>
+          <button class="danger mini" data-del="${r.id}">삭제</button>
+        </div>`;
+      els.records.appendChild(item);
+    });
+    els.records.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', () => deleteRecord(btn.dataset.del)));
+    els.records.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', () => openEdit(btn.dataset.edit)));
+  }
+
+  function escapeHTML(str) {
+    return String(str).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+  }
+
+  function render() {
+    renderActive();
+    const day = els.datePick.value || ymd();
+    const list = getDayRecords(day);
+    renderStats(list, day);
+    renderTimeline(list, day);
+    renderBars(list, day);
+    renderRecords(list);
+  }
+
+  function shiftDay(n) {
+    const d = new Date((els.datePick.value || ymd()) + 'T00:00:00');
+    d.setDate(d.getDate() + n);
+    els.datePick.value = ymd(d);
+    render();
+  }
+
+  function deleteRecord(recordId) {
+    if (!confirm('이 기록을 삭제할까요?')) return;
+    records = records.filter(r => r.id !== recordId);
+    saveRecords();
+    toast('삭제됨');
+    render();
+  }
+
+  function openEdit(recordId) {
+    const r = records.find(x => x.id === recordId);
+    if (!r) return;
+    els.editId.value = r.id;
+    els.editTitle.value = r.title;
+    els.editStart.value = toLocalInputValue(r.start);
+    els.editEnd.value = toLocalInputValue(r.end);
+    els.editDialog.showModal();
+  }
+
+  function saveEdit(e) {
+    e.preventDefault();
+    const recordId = els.editId.value;
+    const title = els.editTitle.value.trim();
+    const start = parseLocalInput(els.editStart.value);
+    const end = parseLocalInput(els.editEnd.value);
+    if (!title || !start || !end || new Date(end) <= new Date(start)) {
+      alert('제목, 시작, 종료 시간을 올바르게 입력해주세요.');
+      return;
+    }
+    records = records.map(r => r.id === recordId ? { ...r, title, start, end, updatedAt: new Date().toISOString() } : r);
+    saveRecords();
+    els.editDialog.close();
+    toast('수정됨');
+    render();
+  }
+
+  function addManual(e) {
+    e.preventDefault();
+    const title = els.manualTitle.value.trim();
+    const start = parseLocalInput(els.manualStart.value);
+    const end = parseLocalInput(els.manualEnd.value);
+    if (!title || !start || !end || new Date(end) <= new Date(start)) {
+      alert('제목, 시작, 종료 시간을 올바르게 입력해주세요.');
+      return;
+    }
+    records.push({ id: id(), title, start, end, createdAt: new Date().toISOString(), manual: true });
+    saveRecords();
+    els.manualForm.reset();
+    els.manualForm.classList.remove('open');
+    els.datePick.value = ymd(new Date(start));
+    toast('수동 기록 추가됨');
+    render();
+  }
+
+  function exportJSON() {
+    const payload = { app: 'private_time_tracker', version: 1, exportedAt: new Date().toISOString(), records, active };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `time-record-backup-${ymd()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function importJSON(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        const imported = Array.isArray(data) ? data : data.records;
+        if (!Array.isArray(imported)) throw new Error('invalid');
+        if (!confirm(`백업 기록 ${imported.length}개를 현재 기록에 합칠까요?`)) return;
+        const byId = new Map(records.map(r => [r.id, r]));
+        imported.forEach(r => {
+          if (r && r.id && r.title && r.start && r.end) byId.set(r.id, r);
+        });
+        records = [...byId.values()].sort((a,b) => new Date(a.start) - new Date(b.start));
+        saveRecords();
+        toast('백업 불러오기 완료');
+        render();
+      } catch {
+        alert('백업 파일을 읽을 수 없어요. JSON 파일인지 확인해주세요.');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function resetAll() {
+    if (!confirm('모든 기록을 삭제할까요? 이 작업은 되돌릴 수 없어요.')) return;
+    records = [];
+    active = null;
+    saveRecords();
+    saveActive();
+    toast('전체 삭제됨');
+    render();
+  }
+
+  function scrollToNow() {
+    const timelineRect = els.timeline.getBoundingClientRect();
+    const now = new Date();
+    const min = now.getHours()*60 + now.getMinutes();
+    const y = (els.timeline.clientHeight || 1152) * min / 1440;
+    window.scrollTo({ top: window.scrollY + timelineRect.top + y - 220, behavior: 'smooth' });
+  }
+
+  function setManualDefaults() {
+    const now = new Date();
+    const before = new Date(now.getTime() - 60 * 60000);
+    els.manualStart.value = toLocalInputValue(before);
+    els.manualEnd.value = toLocalInputValue(now);
+  }
+
+  function bind() {
+    els.startBtn.addEventListener('click', startTimer);
+    els.stopBtn.addEventListener('click', () => stopTimer(true));
+    els.datePick.addEventListener('change', render);
+    els.prevDay.addEventListener('click', () => shiftDay(-1));
+    els.nextDay.addEventListener('click', () => shiftDay(1));
+    els.toggleManual.addEventListener('click', () => { els.manualForm.classList.toggle('open'); setManualDefaults(); });
+    els.manualForm.addEventListener('submit', addManual);
+    els.editForm.addEventListener('submit', saveEdit);
+    els.cancelEdit.addEventListener('click', () => els.editDialog.close());
+    els.scrollNow.addEventListener('click', scrollToNow);
+    els.exportBtn.addEventListener('click', exportJSON);
+    els.importBtn.addEventListener('click', () => els.importFile.click());
+    els.importFile.addEventListener('change', e => e.target.files[0] && importJSON(e.target.files[0]));
+    els.resetBtn.addEventListener('click', resetAll);
+    document.addEventListener('visibilitychange', render);
+    tickHandle = setInterval(renderActive, 1000);
+    setInterval(() => { if (active || els.datePick.value === ymd()) render(); }, 60000);
+  }
+
+  function boot() {
+    els.datePick.value = ymd();
+    initQuickChips();
+    bind();
+    render();
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
